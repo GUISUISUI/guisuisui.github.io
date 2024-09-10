@@ -1,0 +1,175 @@
+<h2>连线</h2>
+
+<p>云平台的trunk口链接交换机的trunk口，云平台的access口链接交换机的access口，上管理下业务（上trunk下access）</p>
+
+<p>配置线一段连接交换机的Console（配置口）</p>
+
+<h2>主机配置</h2>
+
+<p>主机的IP设置为：192.168.100.0/24 192.168.100.100</p>
+
+<h5>单网口要实现内外网连接</h5>
+
+<p>主机ip设置：192.168.100.0/24</p>
+
+<p>电脑连接Internet后添加永久路由，打开终端管理员，</p>
+
+<p><code></code>`powershell
+route print 					//打印route表，查看是否有永久路由
+route delete  网络目的地址 [mask 子网掩码] 网关					//删除多余的永久路由
+route -p add 192.168.100.0 mask 255.255.255.0 192.168.100.1</p>
+
+<p>然后再添加赛题上所需要的网络，网关是192.168.100.1	这里以10.1.30.0/24与10.1.40.0/24网段为例</p>
+
+<p>route -p add 10.1.30.0 mask 255.255.255.0 192.168.100.1
+route -p add 10.1.40.0 mask 255.255.255.0 192.168.100.1
+<code></code>`</p>
+
+<h2>交换机配置</h2>
+
+<h5>连接三层交换</h5>
+
+<p>三层交换使用的协议是：Serial</p>
+
+<p>端口一般它会自动检测，默认是：COM3</p>
+
+<p>波特率一般是：9600、115200，这里是使用的9600</p>
+
+<h5>登录到三层交换</h5>
+
+<p><code>
+Username: admin
+Password:					//非明文输入
+DCWS-6028#config terminal	//进入到交换机的配置模式
+</code></p>
+
+<p>创建所需要的vlan（100，30，40）并将其配上网关</p>
+
+<p><code>
+CS6200-28X-EI(config)#int vlan 100
+CS6200-28X-EI(config-if-vlan100)#ip add 192.168.100.0 255.255.255.0
+CS6200-28X-EI(config-if-vlan100)#int vlan 30
+CS6200-28X-EI(config-if-vlan30)#ip add 10.1.30.254 255.255.255.0
+CS6200-28X-EI(config-if-vlan30)#int vlan 40
+CS6200-28X-EI(config-if-vlan40)#ip add 10.1.40.254 255.255.255.0
+</code></p>
+
+<p>配置Ethernet1/0/1为trunk端口允许vlan100，30，40通过</p>
+
+<p><code>
+CS6200-28X-EI(config-if-vlan40)#int e 1/0/1
+CS6200-28X-EI(config-if-ethernet1/0/1)#switchport trunk allowed vlan 100,30,40
+</code></p>
+
+<p>配置Ethernet1/0/2-8，允许vlan30，40通过</p>
+
+<p><code>
+CS6200-28X-EI(config-if-port-range)#int e 1/0/2-8  
+CS6200-28X-EI(config-if-port-range)#switchport access vlan 100
+</code></p>
+
+<h6>保存交换及配置</h6>
+
+<p><code>
+CS6200-28X-EI#writ
+</code></p>
+
+<h6>重启交换机</h6>
+
+<p><code>
+CS6200-28X-EI#reload
+</code></p>
+
+<h6>恢复出厂</h6>
+
+<p><code>
+CS6200-28X-EI#set default
+CS6200-28X-EI#writ
+CS6200-28X-EI#reload
+</code></p>
+
+<h2>云平台配置</h2>
+
+<h5>登录云平台：</h5>
+
+<p>在浏览器中输入：http://192.168.100.1/dcncloud/</p>
+
+<p>管理员用户：admin</p>
+
+<p>​			密码：dcncloud</p>
+
+<h5>云平台创建网络步骤</h5>
+
+<p>点击管理员==&gt;网络==&gt;添加网络，接下来如图：</p>
+
+<p><img alt="创建网络01" src="/Markdown/PNG/创建网络01.png"/></p>
+
+<p><img alt="创建网络02" src="/Markdown/PNG/创建网络02.png"/></p>
+
+<p><img alt="创建网络03" src="/Markdown/PNG/创建网络03.png"/></p>
+
+<p>同样vlan40也是如此。</p>
+
+<h6>创建网络端口</h6>
+
+<p>在网络界面，点击网络名称下的==&gt;Vlan30==&gt;点击端口==&gt;点击添加端口</p>
+
+<p>修改：名称，将指定ip地址或子网（改为固定的IP地址），固定的IP地址（输入题上所需要的IP地址）如图：</p>
+
+<p><img alt="创建端口" src="/Markdown/PNG/创建端口.png"/></p>
+
+<h5>创建实例步骤</h5>
+
+<p>在平台主页面点击==&gt;普通用户==&gt;实例==&gt;创建实例</p>
+
+<p>需要填写：详情，源，实例类型，网络接口，这些提上都有说明接下来以10.1.30.101为例如图：</p>
+
+
+<p><img alt="创建实例01" src="Markdown/PNG/创建实例01.png"/></p>
+
+<p><img alt="创建实例02" src="/Markdown/PNG/创建实例02.png"/></p>
+
+<p><img alt="创建实例03" src="/Markdown/PNG/创建实例03.png"/></p>
+
+<p><img alt="创建实例04" src="/Markdown/PNG/创建实例04.png"/></p>
+
+<h2>实例配置</h2>
+
+<h5>重置SID</h5>
+
+<p>这些批量生产的的实例使用的镜像都是相同的，且他们的SID也是相同的要想在他们上面做服务，第一步就是重置SID使用的运行命令：sysprep  在运行后弹出的文件夹想双击运行程序，然后勾选通用，点击确定</p>
+
+<h6>操作演示</h6>
+
+<p>云平台点击实例==&gt;点击创建好的实例名称==&gt;点击控制台==&gt;点击右上角的Send CtrAltDel==&gt;输入密码后进入系统（一般是Pass-1234）,接下来如图：</p>
+
+<p><img alt="重置SID01" src="/Markdown/PNG/重置SID01.png"/></p>
+
+<p><img alt="重置SID02" src="/Markdown/PNG/重置SID02.png"/></p>
+
+<p>然后就像是安装操作系统一样：点击下一步==&gt;以后再说==&gt;我接受==&gt;设置密码,如图：</p>
+
+<p><img alt="重置SID03" src="/Markdown/PNG/重置SID03.png"/></p>
+
+<p><img alt="重置SID04" src="/Markdown/PNG/重置SID04.png"/></p>
+
+<p><img alt="重置SID05" src="/Markdown/PNG/重置SID05.png"/></p>
+
+<p><img alt="重置SID06" src="/Markdown/PNG/重置SID06.png"/></p>
+
+<h5>添加防火墙规则</h5>
+
+<p><code>powershell
+netsh advfirewall firewall add rule name=1 dir=in action=allow
+netsh advfirewall firewall add rule name=1 dir=out action=allow
+</code></p>
+
+<h5>设置静态IP地址,</h5>
+
+<p>dns,计算机名称，然后重启</p>
+
+<p><code>powershell
+netsh interface ip set add &quot;以太网&quot; ststic 10.1.30.101 255.255.255.0 10.1.30.254
+netsh interface ipv4 set dns &quot;以太网&quot; static 10.1.30.101 primary
+Rename-Computer Windows1 -Restart
+</code></p>
